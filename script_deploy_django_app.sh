@@ -106,6 +106,10 @@ if [ ! -d "$project_dir" ]; then
     echo "│  Creando entorno virtual...              │"
     echo "└──────────────────────────────────────────┘"
     python3 -m venv "$project_dir"
+    if [ $? -ne 0 ]; then
+        echo "Error al crear el entorno virtual. Verifica y vuelve a intentarlo."
+        delete_project_directory
+    fi
 else
     echo "┌──────────────────────────────────────────────────────┐"
     echo "│  El directorio del proyecto $project_dir ya existe.  │"
