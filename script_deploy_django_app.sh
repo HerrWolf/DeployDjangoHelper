@@ -265,3 +265,35 @@ exec ../bin/gunicorn \${DJANGO_WSGI_MODULE}:application \\
 # Escribir al archivo gunicorn_start
 echo "$gunicorn_script" | sudo tee $project_dir/bin/gunicorn_start >/dev/null
 
+# Dar permisos de ejecución al archivo gunicorn_start
+sudo chmod u+x $project_dir/bin/gunicorn_start
+
+# Verificar e instalar Supervisor
+if ! command -v supervisorctl &>/dev/null; then
+    echo "Supervisor no está instalado. Instalando..."
+    sudo apt-get install -y supervisor
+
+    if [ $? -ne 0 ]; then
+        echo "Error al instalar Supervisor. ¿Desea intentar nuevamente? (si/no)"
+        read try_again
+        case $try_again in
+            si)
+                sudo apt-get install -y supervisor
+                ;;
+            no)
+                echo "No se instalará Supervisor. Saliendo del script."
+                exit 1
+                ;;
+            *)
+                echo "Por favor, responda con 'si' o 'no'."
+                ;;
+        esac
+    else
+        echo "Supervisor ha sido instalado correctamente."
+    fi
+else
+    echo "Supervisor ya está instalado."
+fi
+
+# Crear archivo de configuración de supervisor
+
