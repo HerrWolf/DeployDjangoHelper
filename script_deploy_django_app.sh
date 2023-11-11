@@ -274,26 +274,67 @@ if ! command -v supervisorctl &>/dev/null; then
     sudo apt-get install -y supervisor
 
     if [ $? -ne 0 ]; then
-        echo "Error al instalar Supervisor. ¿Desea intentar nuevamente? (si/no)"
+        echo "┌─────────────────────────────────────────────────────────────────────┐"
+        echo "│  Error al instalar Supervisor. ¿Desea intentar nuevamente? (si/no)  │"
+        echo "└─────────────────────────────────────────────────────────────────────┘"
         read try_again
         case $try_again in
             si)
                 sudo apt-get install -y supervisor
                 ;;
             no)
-                echo "No se instalará Supervisor. Saliendo del script."
+                echo "┌────────────────────────────────────────────────────┐"
+                echo "│  No se instalará Supervisor. Saliendo del script.  │"
+                echo "└────────────────────────────────────────────────────┘"
                 exit 1
                 ;;
             *)
-                echo "Por favor, responda con 'si' o 'no'."
+                echo "┌────────────────────────────────────────┐"
+                echo "│  Por favor, responda con 'si' o 'no'.  │"
+                echo "└────────────────────────────────────────┘"
                 ;;
         esac
     else
-        echo "Supervisor ha sido instalado correctamente."
+        echo "┌───────────────────────────────────────────────┐"
+        echo "│  Supervisor ha sido instalado correctamente.  │"
+        echo "└───────────────────────────────────────────────┘"
     fi
 else
-    echo "Supervisor ya está instalado."
+    echo "┌─────────────────────────────────┐"
+    echo "│  Supervisor ya está instalado.  │"
+    echo "└─────────────────────────────────┘"
 fi
 
 # Crear archivo de configuración de supervisor
+# Crear archivo de configuración Supervisor
+supervisor_conf="/etc/supervisor/conf.d/$project_name.conf"
+
+if [ ! -f "$supervisor_conf" ]; then
+    echo "┌─────────────────────────────────────────────────────┐"
+    echo "│  Creando archivo de configuración para Supervisor:  │"
+    echo "└─────────────────────────────────────────────────────┘"
+    sudo tee "$supervisor_conf" > /dev/null <<EOF
+[program:$project_name_app]
+command = /webapps/$project_name/bin/gunicorn_start
+user = root
+stdout_logfile = /webapps/$project_name/logs/gunicorn_supervisor.log
+redirect_stderr = true
+environment=LANG=en_US.UTF-8,LC_ALL=en_US.UTF-8
+EOF
+
+    if [ $? -ne 0 ]; then
+        echo "┌───────────────────────────────────────────────────────────────┐"
+        echo "│  Error al crear el archivo de configuración para Supervisor.  │"
+        echo "└───────────────────────────────────────────────────────────────┘"
+        exit 1
+    else
+        echo "┌──────────────────────────────────────────────────────────────────┐"
+        echo "│  Archivo de configuración para Supervisor creado correctamente.  │"
+        echo "└──────────────────────────────────────────────────────────────────┘"
+    fi
+else
+    echo "┌──────────────────────────────────────────────────────────┐"
+    echo "│  El archivo de configuración para Supervisor ya existe.  │"
+    echo "└──────────────────────────────────────────────────────────┘"
+fi
 
