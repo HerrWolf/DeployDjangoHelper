@@ -1,5 +1,7 @@
 #!/bin/bash
 
+source ./utils.sh
+
 # Actualizar la lista de paquetes e instalar actualizaciones
 sudo apt update
 sudo apt upgrade -y
@@ -7,14 +9,10 @@ sudo apt upgrade -y
 # Paquetes necesarios para Django (excluyendo motores de bases de datos)
 django_packages=("python3" "python3-pip" "python3-venv" "libpq-dev" "python3-dev" "build-essential" "libssl-dev" "zlib1g-dev" "libbz2-dev" "libreadline-dev" "libsqlite3-dev" "wget" "curl" "llvm" "libncurses5-dev" "libncursesw5-dev" "xz-utils" "tk-dev" "libffi-dev" "git")
 
-# Verificar e instalar paquetes necesarios para Django
+# Verificar e instalar paquetes necesarios para Django con manejo de errores
 for package in "${django_packages[@]}"; do
-    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null │ grep -q "installed"; then
-        echo "$package no está instalado. Instalando..."
-        sudo apt install -y "$package"
-        if [ $? -ne 0 ]; then
-            echo "Error al instalar $package. Por favor, verifique."
-        fi
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "installed"; then
+        handle_package_installation "$package"
     else
         echo "$package ya está instalado."
     fi
