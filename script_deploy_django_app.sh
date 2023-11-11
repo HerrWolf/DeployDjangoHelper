@@ -61,14 +61,30 @@ if ! command -v git &>/dev/null; then
     echo "└──────────────────────────────────────────┘"
     sudo apt install -y git
     if [ $? -ne 0 ]; then
-        echo "┌────────────────────────────────────────────────┐"
-        echo "│  Error al instalar Git. Por favor, verifique.  │"
-        echo "└────────────────────────────────────────────────┘"
+        read -p "Hubo un error al instalar Git. ¿Desea intentar nuevamente? (si/no): " try_again
+        case $try_again in
+            si)
+                sudo apt install -y git
+                ;;
+            no)
+                echo "No se instalará Git. Saliendo del script."
+                exit 1
+                ;;
+            *)
+                echo "┌────────────────────────────────────────┐"
+                echo "│  Por favor, responda con 'si' o 'no'.  │"
+                echo "└────────────────────────────────────────┘"
+                ;;
+        esac
+    else
+        echo "┌──────────────────────────┐"
+        echo "│  Git ya está instalado.  │"
+        echo "└──────────────────────────┘"
     fi
 else
-    echo "┌──────────────────────────────────────────┐"
-    echo "│  Git ya está instalado.                  │"
-    echo "└──────────────────────────────────────────┘"
+    echo "┌─────────────────────────┐"
+    echo "│  Git ya está instalado. │"
+    echo "└─────────────────────────┘"
 fi
 
 # Solicitar el nombre del proyecto al usuario
@@ -207,4 +223,45 @@ else
     echo "└──────────────────────────────────────────────────────────────┘"
 fi
 
+echo "┌───────────────────────────────────┐"
+echo "│  Creando archivo gunicorn_start.  │"
+echo "└───────────────────────────────────┘"
+
+# Añadir al script main.sh
+gunicorn_script="#!/bin/bash
+
+NAME=\"$project_name_app\"
+DJANGODIR=/webapps/$project_name/app
+SOCKFILE=/webapps/$project_name/run/gunicorn.sock
+USER=root
+GROUP=root
+NUM_WORKERS=3
+DJANGO_SETTINGS_MODULE=config.settings
+DJANGO_WSGI_MODULE=config.wsgi
+
+echo \"Starting \$NAME as \`whoami\`\"
+
+# Activate the virtual environment
+cd \$DJANGODIR
+source ../bin/activate
+export DJANGO_SETTINGS_MODULE=\$DJANGO_SETTINGS_MODULE
+export PYTHONPATH=\$DJANGODIR:\$PYTHONPATH
+
+# Create the run directory if it doesn't exist
+RUNDIR=\$(dirname \$SOCKFILE)
+test -d \$RUNDIR || mkdir -p \$RUNDIR
+
+# Start your Django Unicorn
+# Programs meant to be run under supervisor should not daemonize themselves (do not use --daemon)
+exec ../bin/gunicorn \${DJANGO_WSGI_MODULE}:application \\
+  --name \$NAME \\
+  --workers \$NUM_WORKERS \\
+  --user=\$USER --group=\$GROUP \\
+  --bind=unix:\$SOCKFILE \\
+  --log-level=debug \\
+  --log-file=-
+"
+
+# Escribir al archivo gunicorn_start
+echo "$gunicorn_script" | sudo tee $project_dir/bin/gunicorn_start >/dev/null
 
