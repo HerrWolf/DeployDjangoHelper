@@ -223,6 +223,36 @@ else
     echo "└──────────────────────────────────────────────────────────────┘"
 fi
 
+read -p "¿Desea introducir manualmente el puerto o utilizar el puerto predeterminado 8000? (manual/predeterminado): " port_option
+
+case $port_option in
+    manual)
+        while true; do
+            read -p "Por favor, introduzca un puerto del rango 8000 al 8999 (excluyendo 8080): " chosen_port
+            if [[ $chosen_port -ge 8000 && $chosen_port -le 8999 && $chosen_port -ne 8080 ]]; then
+                if ! lsof -i:$chosen_port; then
+                    break
+                else
+                    echo "El puerto $chosen_port ya está en uso. Por favor, elija otro."
+                fi
+            else
+                echo "Puerto no válido. Inténtalo de nuevo."
+            fi
+        done
+        ;;
+    predeterminado)
+        chosen_port=8000
+        if lsof -i:$chosen_port; then
+            echo "El puerto $chosen_port está en uso. Por favor, elige otro."
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Opción no válida. Saliendo."
+        exit 1
+        ;;
+esac
+
 echo "┌───────────────────────────────────┐"
 echo "│  Creando archivo gunicorn_start.  │"
 echo "└───────────────────────────────────┘"
@@ -258,6 +288,7 @@ exec ../bin/gunicorn \${DJANGO_WSGI_MODULE}:application \\
   --workers \$NUM_WORKERS \\
   --user=\$USER --group=\$GROUP \\
   --bind=unix:\$SOCKFILE \\
+  --bind=0.0.0.0:$chosen_port \\
   --log-level=debug \\
   --log-file=-
 "
@@ -337,4 +368,190 @@ else
     echo "│  El archivo de configuración para Supervisor ya existe.  │"
     echo "└──────────────────────────────────────────────────────────┘"
 fi
+
+# Crear directorio 'logs' y archivo 'gunicorn_supervisor.log'
+logs_dir="$project_dir/logs"
+gunicorn_log="$logs_dir/gunicorn_supervisor.log"
+
+if [ ! -d "$logs_dir" ]; then
+    echo "┌────────────────────────────────────────────────┐"
+    echo "│  Creando directorio 'logs' en $project_dir...  │"
+    echo "└────────────────────────────────────────────────┘"
+    sudo mkdir -p "$logs_dir"
+    if [ $? -ne 0 ]; then
+        echo "┌─────────────────────────────────────────┐"
+        echo "│  Error al crear el directorio 'logs'..  │"
+        echo "└─────────────────────────────────────────┘"
+        exit 1
+    fi
+else
+    echo "┌───────────────────────────────────────────────────┐"
+    echo "│  El directorio 'logs' ya existe en $project_dir.  │"
+    echo "└───────────────────────────────────────────────────┘"
+fi
+
+if [ ! -f "$gunicorn_log" ]; then
+    echo "┌─────────────────────────────────────────────────────────────┐"
+    echo "│  Creando archivo 'gunicorn_supervisor.log' en $logs_dir...  │"
+    echo "└─────────────────────────────────────────────────────────────┘"
+    sudo touch "$gunicorn_log"
+    if [ $? -ne 0 ]; then
+        echo "┌────────────────────────────────────────────────────────┐"
+        echo "│  Error al crear el archivo 'gunicorn_supervisor.log'.  │"
+        echo "└────────────────────────────────────────────────────────┘"
+        exit 1
+    fi
+else
+    echo "┌────────────────────────────────────────────────────────────────┐"
+    echo "│  El archivo 'gunicorn_supervisor.log' ya existe en $logs_dir.  │"
+    echo "└────────────────────────────────────────────────────────────────┘"
+fi
+
+# Recargar configuración de Supervisor
+sudo supervisorctl reread
+if [ $? -ne 0 ]; then
+    echo "┌─────────────────────────────────────────────────────┐"
+    echo "│  Error al recargar la configuración de Supervisor.  │"
+    echo "└─────────────────────────────────────────────────────┘"
+    echo ""
+    exit 1
+else
+    echo "┌────────────────────────────────────────────────────────┐"
+    echo "│  Configuración de Supervisor recargada correctamente.  │"
+    echo "└────────────────────────────────────────────────────────┘"
+    echo ""
+fi
+
+# Preguntar al usuario el dominio a usar
+read -p "Ingrese el dominio que se usará para la aplicación: " domain_name
+
+# Verificar si Nginx está instalado
+if ! command -v nginx &>/dev/null; then
+    echo "┌──────────────────────────────────────────┐"
+    echo "│  Nginx no está instalado. Instalando...  │"
+    echo "└──────────────────────────────────────────┘"
+    sudo apt-get update
+    sudo apt-get install -y nginx
+
+    if [ $? -ne 0 ]; then
+        echo "┌──────────────────────────────────────────────────────────┐"
+        echo "│  Hubo un error al instalar Nginx. Por favor, verifique.  │"
+        echo "└──────────────────────────────────────────────────────────┘"
+    else
+        echo "┌────────────────────────────────────────┐"
+        echo "│  Nginx se ha instalado correctamente.  │"
+        echo "└────────────────────────────────────────┘"
+    fi
+else
+    echo "┌────────────────────────────┐"
+    echo "│  Nginx ya está instalado.  │"
+    echo "└────────────────────────────┘"
+fi
+
+# Crear archivo de configuración Nginx
+nginx_config="/etc/nginx/sites-available/$domain_name"
+
+if [ ! -f "$nginx_config" ]; then
+    echo "┌──────────────────────────────────────────────────────────────┐"
+    echo "│  Creando archivo de configuración Nginx en $nginx_config...  │"
+    echo "└──────────────────────────────────────────────────────────────┘"
+
+    sudo tee "$nginx_config" > /dev/null <<EOF
+upstream $project_name_app_server {
+  server unix:/webapps/$project_name/run/gunicorn.sock fail_timeout=0;
+}
+ 
+server {
+    server_name $domain_name;
+ 
+    access_log /webapps/$project_name/logs/nginx-access.log;
+    error_log /webapps/$project_name/logs/nginx-error.log;
+ 
+    location /static/ {
+        alias   /webapps/$project_name/app/staticfiles/;
+    }
+    
+    location /media/ {
+        alias   /webapps/$project_name/app/media/;
+    }
+ 
+    location / {
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header Host \$http_host;
+        proxy_redirect off;
+
+        if (!-f \$request_filename) {
+            proxy_pass http://$project_name_app_server;
+            break;
+        }
+    }
+}
+EOF
+    # Crear enlace simbólico a sites-enabled
+    sudo ln -s $nginx_config /etc/nginx/sites-enabled/
+
+    # Verificar la configuración de Nginx
+    sudo nginx -t
+
+    # Recargar la configuración de Nginx
+    sudo systemctl reload nginx
+else
+    echo "┌─────────────────────────────────────────────────────────────────┐"
+    echo "│  El archivo de configuración Nginx ya existe en $nginx_config.  │"
+    echo "└─────────────────────────────────────────────────────────────────┘"
+fi
+
+# Preguntar al usuario si desea activar los certificados SSL
+read -p "¿Desea activar los certificados SSL para el dominio ingresado? (si/no): " ssl_option
+
+case $ssl_option in
+  si)
+    # Verificar e instalar Certbot
+    if ! command -v certbot &>/dev/null; then
+        echo "┌────────────────────────────────────────────┐"
+        echo "│  Certbot no está instalado. Instalando...  │"
+        echo "└────────────────────────────────────────────┘"
+        sudo apt-get update
+        sudo apt-get install certbot python3-certbot-nginx
+
+        if [ $? -ne 0 ]; then
+            echo "┌───────────────────────────────────────────────────┐"
+            echo "│  Error al instalar Certbot. Saliendo del script.  │"
+            echo "└───────────────────────────────────────────────────┘"
+            exit 1
+        fi
+    else
+        echo "┌──────────────────────────────┐"
+        echo "│  Certbot ya está instalado.  │"
+        echo "└──────────────────────────────┘"
+    fi
+
+    # Solicitar y configurar certificado SSL para el dominio
+    sudo certbot --nginx -d $domain_name
+
+    # Verificar si se han instalado correctamente los certificados
+    if [ $? -eq 0 ]; then
+        echo "┌───────────────────────────────────────────────────────────────────────────┐"
+        echo "│  Certificados SSL instalados correctamente para el dominio $domain_name.  │"
+        echo "└───────────────────────────────────────────────────────────────────────────┘"
+    else
+        echo "┌─────────────────────────────────────────────────────────────────┐"
+        echo "│  Error al instalar los certificados SSL. Por favor, verifique.  │"
+        echo "└─────────────────────────────────────────────────────────────────┘"
+        exit 1
+    fi
+    ;;
+  no)
+    echo "┌────────────────────────────────────────────────────────────────────┐"
+    echo "│  No se activarán los certificados SSL. Continuando con el script.  │"
+    echo "└────────────────────────────────────────────────────────────────────┘"
+    ;;
+  *)
+    echo "┌─────────────────────────────────────────────┐"
+    echo "│  Respuesta no válida. Saliendo del script.  │"
+    echo "└─────────────────────────────────────────────┘"
+    exit 1
+    ;;
+esac
+
 
