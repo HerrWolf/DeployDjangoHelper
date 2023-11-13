@@ -29,15 +29,34 @@ read -p "Seleccione una opción (1 o 2): " db_choice
 case $db_choice in
     1)
         db_engine="mysql"
+        configure_mysql_user
         ;;
     2)
         db_engine="postgres"
+        configure_postgres_user
         ;;
     *)
         echo "┌──────────────────────────────────────────┐"
         echo "│  Opción no válida. Saliendo.             │"
         echo "└──────────────────────────────────────────┘"
         exit 1
+        ;;
+esac
+
+# Lógica para crear un usuario y una base de datos adicionales
+read -p "¿Desea crear un usuario y una base de datos para el proyecto? (si/no): " create_db_option
+
+case $create_db_option in
+    si)
+        read -p "Ingrese el nombre de la base de datos para el proyecto: " db_name
+        create_database_user "$db_name"
+        ;;
+    no)
+        echo "Continuando con el script."
+        ;;
+    *)
+        echo "Opción no válida. Por favor, responda con 'si' o 'no'."
+        # Lógica para volver a preguntar si quiere crear un usuario y base de datos
         ;;
 esac
 
@@ -298,6 +317,43 @@ echo "$gunicorn_script" | sudo tee $project_dir/bin/gunicorn_start >/dev/null
 
 # Dar permisos de ejecución al archivo gunicorn_start
 sudo chmod u+x $project_dir/bin/gunicorn_start
+
+# Ejecutar el archivo gunicorn_start
+sudo $project_dir/bin/gunicorn_start
+
+# Verificación del proyecto
+verify_project_start
+
+if [ $? -eq 0 ]; then
+    echo "┌────────────────────────────────────┐"
+    echo "│  El proyecto se inició con éxito.  │"
+    echo "└────────────────────────────────────┘"
+else
+    echo "┌─────────────────────────────────────────────────────────┐"
+    echo "│  No se pudo iniciar el proyecto. Verifica manualmente.  │"
+    echo "└─────────────────────────────────────────────────────────┘"
+    # Pedir al usuario que verifique el archivo gunicorn_start
+    read -p "¿Has verificado el archivo gunicorn_start? ¿Quieres volver a intentar la verificación? (si/no): " verification_option
+
+    case $verification_option in
+        si)
+            # Volver a realizar la verificación
+            verify_project_start
+            ;;
+        no)
+            echo "┌────────────────────────────────┐"
+            echo "│  Continuando con el script...  │"
+            echo "└────────────────────────────────┘"
+            # Continuar con el resto del script
+            ;;
+        *)
+            echo "┌─────────────────────────────────────────────────────┐"
+            echo "│  Respuesta no válida. Continuando con el script...  │"
+            echo "└─────────────────────────────────────────────────────┘"
+            # Continuar con el resto del script
+            ;;
+    esac
+fi
 
 # Verificar e instalar Supervisor
 if ! command -v supervisorctl &>/dev/null; then
