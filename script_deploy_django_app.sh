@@ -205,6 +205,13 @@ if [ -d "$app_dir" ]; then
         exit 1  # Salir del script con un código de error (en este caso, 1
     fi
 
+    echo "┌─────────────────────────────────────────────────────────────────────────┐"
+    echo "│  En este momento el proyecto ya esta clonado dentro de la carpeta app   │"
+    echo "│  puede ingresar via ssh a la ruta del proyecto y configurar el archivo  │"
+    echo "│  settings.py y agregar su archivo .env si lo necesita.                  │"
+    echo "│  Es aconsejable hacerlo antes de la instalacion de dependencias.        │"
+    echo "└─────────────────────────────────────────────────────────────────────────┘"
+
     # Preguntar al usuario si quiere instalar requirements (con manejo de entrada no válida)
     valid_input_requirements=false
     while [ "$valid_input_requirements" != true ]; do
