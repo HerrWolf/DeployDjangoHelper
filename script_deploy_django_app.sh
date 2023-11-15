@@ -411,7 +411,7 @@ if [ ! -f "$supervisor_conf" ]; then
     echo "│  Creando archivo de configuración para Supervisor:  │"
     echo "└─────────────────────────────────────────────────────┘"
     sudo tee "$supervisor_conf" > /dev/null <<EOF
-[program:$project_name_app]
+[program:${project_name}_app]
 command = /webapps/$project_name/bin/gunicorn_start
 user = root
 stdout_logfile = /webapps/$project_name/logs/gunicorn_supervisor.log
@@ -523,7 +523,7 @@ if [ ! -f "$nginx_config" ]; then
     echo "└──────────────────────────────────────────────────────────────┘"
 
     sudo tee "$nginx_config" > /dev/null <<EOF
-upstream $project_name_app_server {
+upstream ${project_name}_app_server {
   server unix:/webapps/$project_name/run/gunicorn.sock fail_timeout=0;
 }
  
@@ -547,7 +547,7 @@ server {
         proxy_redirect off;
 
         if (!-f \$request_filename) {
-            proxy_pass http://$project_name_app_server;
+            proxy_pass http://${project_name}_app_server;
             break;
         }
     }
