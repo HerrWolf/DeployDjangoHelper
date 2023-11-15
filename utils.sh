@@ -1,18 +1,17 @@
 # Función para verificar y manejar errores en la instalación de paquetes
 function handle_package_installation() {
-    package_name="$1"
-    while true; do
-        echo "$package_name no está instalado. ¿Desea intentar instalarlo nuevamente? (si/no)"
-        read reinstall
+    local package_name="$1"
+
+    # Intentar instalar el paquete automáticamente
+    install_package "$package_name"
+    while [ $? -ne 0 ]; do
+        # La instalación automática falló, preguntar si quieren volver a intentarlo
+        echo "Error al instalar $package_name. ¿Desea intentar instalarlo nuevamente? (si/no)"
+        read -r reinstall
+
         case $reinstall in
             si)
-                sudo apt install -y "$package_name"
-                if [ $? -ne 0 ]; then
-                    echo "Error al instalar $package_name. Verifica y vuelve a intentarlo."
-                else
-                    echo "$package_name ha sido instalado correctamente."
-                    break
-                fi
+                install_package "$package_name"
                 ;;
             no)
                 echo "Deteniendo el script. Verifica y vuelve a intentarlo."
@@ -23,6 +22,19 @@ function handle_package_installation() {
                 ;;
         esac
     done
+}
+
+function install_package() {
+    local package_name="$1"
+
+    sudo apt install -y "$package_name"
+    if [ $? -ne 0 ]; then
+        echo "Error al instalar $package_name."
+        return 1
+    else
+        echo "$package_name ha sido instalado correctamente."
+        return 0
+    fi
 }
 
 function delete_project_directory() {

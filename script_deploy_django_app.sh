@@ -49,6 +49,7 @@ read -p "¿Desea crear un usuario y una base de datos para el proyecto? (si/no):
 case $create_db_option in
     si)
         read -p "Ingrese el nombre de la base de datos para el proyecto: " db_name
+        project_name_user="${db_name}_user"
         create_database_user "$db_name"
         ;;
     no)
