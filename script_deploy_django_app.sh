@@ -51,6 +51,8 @@ case $create_db_option in
         read -p "Ingrese el nombre de la base de datos para el proyecto: " db_name
         project_name_user="${db_name}_user"
         create_database_user "$db_name"
+        echo "Presione Enter para continuar..."
+        read
         ;;
     no)
         echo "Continuando con el script."

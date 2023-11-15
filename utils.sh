@@ -88,11 +88,19 @@ function create_database_user() {
         sudo mysql -e "CREATE USER '$db_user'@'localhost' IDENTIFIED BY '$db_password';"
         sudo mysql -e "CREATE DATABASE $db_name;"
         sudo mysql -e "GRANT ALL PRIVILEGES ON $db_name.* TO '$db_user'@'localhost';"
-        echo "Usuario de la base de datos: $db_user, Contraseña: $db_password, Nombre de la base de datos: $db_name"
+        echo "┌──────────────────────────────────────────────────────────────────────────────┐"
+        echo "│  Nombre de la base de datos: $db_name                                        │"
+        echo "│  Usuario de la base de datos: $db_user                                       │"
+        echo "│  Contraseña: $db_password                                                    │"
+        echo "└──────────────────────────────────────────────────────────────────────────────┘"
     elif [ "$db_engine" = "postgres" ]; then
         sudo -u postgres psql -c "CREATE USER $db_user WITH PASSWORD '$db_password';"
         sudo -u postgres psql -c "CREATE DATABASE $db_name OWNER $db_user;"
-        echo "Usuario de la base de datos: $db_user, Contraseña: $db_password, Nombre de la base de datos: $db_name"
+        echo "┌──────────────────────────────────────────────────────────────────────────────┐"
+        echo "│  Nombre de la base de datos: $db_name                                        │"
+        echo "│  Usuario de la base de datos: $db_user                                       │"
+        echo "│  Contraseña: $db_password                                                    │"
+        echo "└──────────────────────────────────────────────────────────────────────────────┘"
     fi
 }
 
