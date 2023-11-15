@@ -289,7 +289,7 @@ echo "└───────────────────────�
 # Añadir al script main.sh
 gunicorn_script="#!/bin/bash
 
-NAME=\"$project_name_app\"
+NAME=\"${project_name}_app\"
 DJANGODIR=/webapps/$project_name/app
 SOCKFILE=/webapps/$project_name/run/gunicorn.sock
 USER=root
