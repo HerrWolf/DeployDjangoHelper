@@ -475,6 +475,7 @@ fi
 
 # Recargar configuración de Supervisor
 sudo supervisorctl reread
+sudo supervisorctl update
 if [ $? -ne 0 ]; then
     echo "┌─────────────────────────────────────────────────────┐"
     echo "│  Error al recargar la configuración de Supervisor.  │"
