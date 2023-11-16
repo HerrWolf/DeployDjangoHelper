@@ -85,7 +85,7 @@ function create_database_user() {
     local db_name="$1"
     
     if [ "$db_engine" = "mysql" ]; then
-        sudo mysql -e "CREATE USER '$db_user'@'localhost' IDENTIFIED BY '$db_password';"
+        sudo mysql -e "CREATE USER '${db_user}'@'localhost' IDENTIFIED BY '${db_password}';"
         sudo mysql -e "CREATE DATABASE $db_name;"
         sudo mysql -e "GRANT ALL PRIVILEGES ON $db_name.* TO '$db_user'@'localhost';"
         echo "┌──────────────────────────────────────────────────────────────────────────────┐"
